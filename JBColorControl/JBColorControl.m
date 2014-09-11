@@ -132,7 +132,9 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 /// Designated selectedColor/selectedColorIndex setter.
 - (void)setSelectedColorIndex:(NSUInteger)selectedColorIndex animated:(BOOL)animated {
 	
+	[self willChangeValueForKey:kSelectedColorIndexKeyPath];
 	_selectedColorIndex = selectedColorIndex;
+	[self didChangeValueForKey:kSelectedColorIndexKeyPath];
 	
 	if (self.enabled) {
 		[self JB_scrollToColorSwatchLayerAtIndex:selectedColorIndex animated:animated];
@@ -160,6 +162,23 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 - (UIColor *)selectedColor {
 	UIColor *selectedColor = (self.selectedColorIndex < [self.selectableColors count] ? self.selectableColors[self.selectedColorIndex] : nil);
 	return selectedColor;
+}
+
+#pragma mark - NSKeyValueObserving Protocol
+
+/// Whenever we are changing selectedColorIndex, selectedColor is also affected.
++ (NSSet *)keyPathsForValuesAffectingSelectedColor {
+	return [NSSet setWithObject:kSelectedColorIndexKeyPath];
+}
+
+// Because we are implementing animated: versions of the color setters, and the base setters ultimately call the "designated" setter with the animated: parameter, -setSelectedColorIndex:animated:, *and* these animated: versions can be called independently, we have to manually notify in order to avoid sometimes notifying twice (i.e., when calling base setters).
+
++ (BOOL)automaticallyNotifiesObserversOfSelectedColorIndex {
+	return NO;
+}
+
++ (BOOL)automaticallyNotifiesObserversOfSelectedColor {
+	return NO;
 }
 
 #pragma mark UIScrollViewDelegate Protocol

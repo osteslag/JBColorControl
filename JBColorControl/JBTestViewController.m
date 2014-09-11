@@ -89,7 +89,7 @@ static NSString * const kSelectedColorKeyPath = @"selectedColorIndex";
 	
 	// Set up event handling and ivars.
 	
-	[colorControl addTarget:self action:@selector (JB_updateReadout:) forControlEvents:UIControlEventValueChanged];
+	[colorControl addObserver:self forKeyPath:kSelectedColorKeyPath options:0x00 context:NULL];
 	
 	self.privateColorSwatchContainerView = swatchContainerView;
 	self.privateColorControl = colorControl;
@@ -126,6 +126,19 @@ static NSString * const kSelectedColorKeyPath = @"selectedColorIndex";
 
 - (void)viewWillDisappear:(BOOL)animated {
 	self.navigationController.navigationBar.titleTextAttributes = nil;
+}
+
+- (void)dealloc {
+	[self.privateColorControl removeObserver:self forKeyPath:kSelectedColorKeyPath];
+}
+
+#pragma mark - NSKeyValueObserving Protocol
+
+// Update readout color control with new selected value from our selectable color control.
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+	if ([keyPath isEqualToString:kSelectedColorKeyPath]) {
+		[self JB_updateReadout:self];
+	}
 }
 
 #pragma mark - Private Methods
@@ -207,7 +220,6 @@ static NSString * const kSelectedColorKeyPath = @"selectedColorIndex";
 	
 	if (tappedColorControl) {
 		UIColor *selectedColor = tappedColorControl.selectableColors[0];
-		[self.privateReadoutColorControl setSelectedColor:selectedColor animated:YES];
 		[self.privateColorControl setSelectedColor:selectedColor animated:YES];
 	}
 }
