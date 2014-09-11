@@ -247,6 +247,11 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 	return (self.enabled ? UIAccessibilityTraitAdjustable : UIAccessibilityTraitNotEnabled);
 }
 
+- (UIBezierPath *)accessibilityPath {
+	CGRect screenFrame = [self convertRect:self.bounds toView:nil];
+	return [UIBezierPath bezierPathWithOvalInRect:screenFrame];
+}
+
 - (void)accessibilityIncrement {
 	[self JB_selectNextElementInDirection:UIAccessibilityScrollDirectionNext animated:YES];
 }
