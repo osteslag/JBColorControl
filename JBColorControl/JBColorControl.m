@@ -226,8 +226,19 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 
 - (NSString *)accessibilityValue {
 	
+	NSString *accessibilityValue;
 	NSUInteger selectedColorIndex = self.selectedColorIndex;
-	NSString *accessibilityValue = [NSString stringWithFormat:@"%lu", (unsigned long)selectedColorIndex];
+	
+	if (selectedColorIndex == NSNotFound) {
+		accessibilityValue = (self.localizedAccessibilityNoSelectionValue ?: NSLocalizedString (@"No selection", @"Default Accessibility Value for no selection."));
+	} else {
+		if (self.localizedAccessibilityValues) {
+			NSAssert (self.localizedAccessibilityValues.count == self.selectableColors.count, @"There must be an equal number of elements in the selectableColors and localizedAccessibilityValues arrays.");
+			accessibilityValue = self.localizedAccessibilityValues[selectedColorIndex];
+		} else {
+			accessibilityValue = [NSString stringWithFormat:@"%lu", (unsigned long)selectedColorIndex]; // Default Accessibility Value
+		}
+	}
 	
 	return accessibilityValue;
 }

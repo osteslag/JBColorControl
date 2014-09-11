@@ -33,6 +33,16 @@
  */
 @property (nonatomic, assign) NSUInteger selectedColorIndex;
 
+/** Array of localized Accessibility values, mapped 1:1 with elements in selectableColors.
+ @seealso selectableColors, localizedAccessibilityNoSelectionValue.
+ */
+@property (nonatomic, copy) NSArray *localizedAccessibilityValues;
+
+/** Localized string to use as Accessibility Value when there is no selected color.
+ @seealso localizedAccessibilityValues, selectableColors.
+ */
+@property (nonatomic, copy) NSString *localizedAccessibilityNoSelectionValue;
+
 /// Designated value setter, gives the option to set the color animated.
 - (void)setSelectedColorIndex:(NSUInteger)selectedColorIndex animated:(BOOL)animated;
 

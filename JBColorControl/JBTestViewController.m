@@ -113,6 +113,19 @@ static NSString * const kSelectedColorKeyPath = @"selectedColorIndex";
 		[UIColor cyanColor],
 		[UIColor magentaColor],
 	];
+	self.privateColorControl.accessibilityLabel = self.privateReadoutColorControl.accessibilityLabel = @"";
+	self.privateColorControl.localizedAccessibilityValues = @[
+		NSLocalizedString (@"Red", @"Name of first color."),
+		NSLocalizedString (@"Blue", @"Name of second color."),
+		NSLocalizedString (@"Green", @"Name of third color."),
+		NSLocalizedString (@"Yellow", @"Name of fourth color."),
+		NSLocalizedString (@"Brown", @"Name of fifth color."),
+		NSLocalizedString (@"Orange", @"Name of sixth color."),
+		NSLocalizedString (@"Purple", @"Name of seventh color."),
+		NSLocalizedString (@"Cyan", @"Name of eighth color."),
+		NSLocalizedString (@"Magenta", @"Name of ninth color."),
+	];
+	self.privateColorControl.localizedAccessibilityNoSelectionValue = NSLocalizedString (@"No color", @"Accessibility value for when no color is selected.");
 	
 	[self JB_loadSwatches];
 	[self JB_layoutSwatches];
@@ -226,6 +239,7 @@ static NSString * const kSelectedColorKeyPath = @"selectedColorIndex";
 
 - (void)JB_updateReadout:(id)sender {
 	[self.privateReadoutColorControl setSelectedColor:self.privateColorControl.selectedColor animated:YES];
+	[self.privateReadoutColorControl setLocalizedAccessibilityValues:@[self.privateColorControl.accessibilityValue]];
 }
 
 @end
