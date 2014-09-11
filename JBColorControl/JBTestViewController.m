@@ -87,7 +87,9 @@ static NSString * const kSelectedColorKeyPath = @"selectedColorIndex";
 	UITapGestureRecognizer *tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector (JB_didTapSwatchContainer:)];
 	[swatchContainerView addGestureRecognizer:tapRecognizer];
 	
-	// Set up ivars.
+	// Set up event handling and ivars.
+	
+	[colorControl addTarget:self action:@selector (JB_updateReadout:) forControlEvents:UIControlEventValueChanged];
 	
 	self.privateColorSwatchContainerView = swatchContainerView;
 	self.privateColorControl = colorControl;
@@ -208,6 +210,10 @@ static NSString * const kSelectedColorKeyPath = @"selectedColorIndex";
 		[self.privateReadoutColorControl setSelectedColor:selectedColor animated:YES];
 		[self.privateColorControl setSelectedColor:selectedColor animated:YES];
 	}
+}
+
+- (void)JB_updateReadout:(id)sender {
+	[self.privateReadoutColorControl setSelectedColor:self.privateColorControl.selectedColor animated:YES];
 }
 
 @end

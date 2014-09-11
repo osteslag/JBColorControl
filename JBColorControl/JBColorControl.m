@@ -188,6 +188,7 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 	NSUInteger selectedColorIndex = [[self.privateSelectedLayer valueForKeyPath:kSelectedColorIndexKeyPath] unsignedIntegerValue];
 	if (selectedColorIndex != self.selectedColorIndex) {
 		self.selectedColorIndex = selectedColorIndex;
+		[self sendActionsForControlEvents:UIControlEventValueChanged];
 	}
 }
 
