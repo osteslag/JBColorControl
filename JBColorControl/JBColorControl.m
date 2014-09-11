@@ -55,6 +55,9 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 		self.enabled = NO; // To set the border color and keep view hierarchy simple until we might be enabled
 		self.layer.borderWidth = 1.0f / [[UIScreen mainScreen] scale]; // 1 px hairline
 		self.selectedColorIndex = NSNotFound;
+		
+		self.isAccessibilityElement = YES;
+		self.accessibilityLabel = NSLocalizedString (@"Color", @"Default/generic Accessibility Label for a color control.");
 	}
 	
 	return self;
@@ -217,6 +220,30 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 	}
 }
 
+#pragma mark UIAccessibility Protocol
+
+// The accessibility aspects that do not need to be customized or maintained with Voice Over turned off are implemented here.
+
+- (NSString *)accessibilityValue {
+	
+	NSUInteger selectedColorIndex = self.selectedColorIndex;
+	NSString *accessibilityValue = [NSString stringWithFormat:@"%lu", (unsigned long)selectedColorIndex];
+	
+	return accessibilityValue;
+}
+
+- (UIAccessibilityTraits)accessibilityTraits {
+	return (self.enabled ? UIAccessibilityTraitAdjustable : UIAccessibilityTraitNotEnabled);
+}
+
+- (void)accessibilityIncrement {
+	[self JB_selectNextElementInDirection:UIAccessibilityScrollDirectionNext animated:YES];
+}
+
+- (void)accessibilityDecrement {
+	[self JB_selectNextElementInDirection:UIAccessibilityScrollDirectionPrevious animated:YES];
+}
+
 #pragma mark - Private Methods
 
 - (void)JB_updateAppearanceAnimated:(BOOL)animated {
@@ -335,6 +362,24 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 	
 	// Store the value of the most visible color index so we know the color the privateSelectedLayer represents.
 	[self.privateSelectedLayer setValue:@(mostVisibleColorIndex) forKeyPath:kSelectedColorIndexKeyPath];
+}
+
+- (void)JB_selectNextElementInDirection:(UIAccessibilityScrollDirection)direction animated:(BOOL)animated {
+	
+	if (self.selectableColors.count == 0) {
+		return;
+	}
+	
+	NSUInteger selectedColorIndex = self.selectedColorIndex;
+	NSInteger delta = (direction == UIAccessibilityScrollDirectionNext ? 1 : -1);
+	
+	if (selectedColorIndex == NSNotFound) {
+		selectedColorIndex = (delta > 0 ? 0 : self.selectableColors.count - 1); // Select first or last
+	} else {
+		selectedColorIndex = (selectedColorIndex + self.selectableColors.count + delta) % self.selectableColors.count;
+	}
+	
+	[self setSelectedColorIndex:selectedColorIndex animated:animated];
 }
 
 /// Convenience method for scrolling to the nearest color given by the index.
