@@ -14,6 +14,8 @@ typedef struct {
 } JBPrivateColorControlGeometry;
 
 static CGSize const kMinimumHitTargetSize = {48, 48}; // In case the bounds size is smaller, this is the hit target size that will be used
+static CGFloat const kColorSwatchPaddingFractionOfDiameter = 0.2f; // Blank space between swatch layers
+static CGFloat const kMaximumScrollDistance = 8192; // More than the maximum distance the scroll view can be set to travel when swiping
 static NSString * const kSelectedColorIndexKeyPath = @"selectedColorIndex"; // Used for both self and selected layer
 static NSString * const kSelectedColorKeyPath = @"selectedColor";
 
@@ -26,6 +28,12 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 
 /// The scroll view, containing the two color swatch layers, handling the user interaction.
 @property (nonatomic, strong) UIScrollView *privateScrollView;
+
+/// The layer representing the selected (most visible) color.
+@property (nonatomic, strong) CALayer *privateSelectedLayer;
+
+/// The layer representing the next or previous (not so visible) color.
+@property (nonatomic, strong) CALayer *privateSecondaryLayer;
 
 /// Cached geometry.
 @property (nonatomic, assign) JBPrivateColorControlGeometry privateGeometry;
@@ -58,6 +66,7 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 	
 	if (enabled) {
 		[self JB_expandViewHierarchy];
+		[self JB_scrollToColorSwatchLayerAtIndex:self.selectedColorIndex animated:NO];
 	} else {
 		[self JB_collapseViewHierarchy];
 	}
@@ -75,6 +84,7 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 	// Cache geometry.
 	JBPrivateColorControlGeometry geometry;
 	geometry.diameter = diameter;
+	geometry.distance = (CGFloat)round (diameter * (1 + kColorSwatchPaddingFractionOfDiameter));
 	self.privateGeometry = geometry;
 	
 	[super setBounds:bounds];
@@ -97,6 +107,10 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 	}
 	
 	self.privateScrollView.frame = self.bounds;
+	self.privateScrollView.contentSize = CGSizeMake (self.privateGeometry.diameter, kMaximumScrollDistance * 2); // Enough for "infinite" scrolling
+	
+	[self JB_adjustContentOffsetIfNecessary]; // Needed for the first layout pass when we are at offset zero
+	[self JB_scrollToColorSwatchLayerAtIndex:self.selectedColorIndex animated:NO];
 }
 
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
@@ -120,7 +134,11 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 	
 	_selectedColorIndex = selectedColorIndex;
 	
-	[self JB_updateAppearanceAnimated:animated];
+	if (self.enabled) {
+		[self JB_scrollToColorSwatchLayerAtIndex:selectedColorIndex animated:animated];
+	} else {
+		[self JB_updateAppearanceAnimated:animated];
+	}
 }
 
 - (void)setSelectedColor:(UIColor *)selectedColor {
@@ -142,6 +160,41 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 - (UIColor *)selectedColor {
 	UIColor *selectedColor = (self.selectedColorIndex < [self.selectableColors count] ? self.selectableColors[self.selectedColorIndex] : nil);
 	return selectedColor;
+}
+
+#pragma mark UIScrollViewDelegate Protocol
+
+// We shouldn't adjust content offset while scrolling because it would mess up how the scroll view would interpret the offset returned in -scrollViewWillEndDragging:withVelocity:targetContentOffset: and how it would come to rest.
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+	[self JB_updateColorSwatchLayers];
+}
+
+// Possibly center the content so that the user can't keep scrolling all the way to the edge.
+- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
+	[self JB_adjustContentOffsetIfNecessary];
+}
+
+/// Computes the color swatch layer closest to the targetContentOffset and adjusts it to align with the layer.
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset {
+	NSUInteger targetIndex = [self JB_mostVisibleColorIndexAtContentOffset:*targetContentOffset];
+	*targetContentOffset = [self JB_contentOffsetForColorIndex:targetIndex nearest:*targetContentOffset];
+}
+
+/// The catch-all method for user-selection of new values.
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
+	
+	[self JB_adjustContentOffsetIfNecessary];
+	
+	NSUInteger selectedColorIndex = [[self.privateSelectedLayer valueForKeyPath:kSelectedColorIndexKeyPath] unsignedIntegerValue];
+	if (selectedColorIndex != self.selectedColorIndex) {
+		self.selectedColorIndex = selectedColorIndex;
+	}
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)willDecelerate {
+	if (!willDecelerate) {
+		[self scrollViewDidEndDecelerating:scrollView];
+	}
 }
 
 #pragma mark - Private Methods
@@ -182,6 +235,8 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 	
 	[self.privateScrollView removeFromSuperview];
 	
+	self.privateSelectedLayer = nil;
+	self.privateSecondaryLayer = nil;
 	self.privateScrollView = nil;
 }
 
@@ -199,10 +254,102 @@ static UIColor* StrokeColorFromFillColor (UIColor* fillColor);
 		self.privateScrollView.scrollsToTop = NO;
 		self.privateScrollView.delegate = self;
 		
+		self.privateSelectedLayer = [CALayer layer];
+		self.privateSecondaryLayer = [CALayer layer];
+		
+		[self.privateScrollView.layer addSublayer:self.privateSelectedLayer];
+		[self.privateScrollView.layer addSublayer:self.privateSecondaryLayer];
 		[self addSubview:self.privateScrollView];
 		
 		[self setNeedsLayout];
 	}
+}
+
+/** Offset content if we're too far from the center.
+ @discussion The reason why we re-center rather early is that if the user gives the scroll view a fast swipe, there should be enough content to scroll to rest -- without having to re-center (which would halt the scrolling, I assume). Re-centering (and rearranging the content) will give the illusion of infinite scrolling.
+ @note This method assumes that the scroll view is already "on track", meaning that we can (and must) adjust the content offset by a whole number of "full paletttes" (representations of all colors).
+ */
+- (void)JB_adjustContentOffsetIfNecessary {
+	
+	CGPoint contentOffset = self.privateScrollView.contentOffset;
+	CGFloat contentHeight = self.privateScrollView.contentSize.height;
+	CGFloat distanceToContentCenter = contentOffset.y - contentHeight / 2.0f;
+	CGFloat fullPaletteHeight = self.selectableColors.count * self.privateGeometry.distance;
+	
+	// If we're off by more than two "pages", re-center so that there more is room for free scrolling.
+	BOOL shouldAdjustContentOffset = (ABS (distanceToContentCenter) > fullPaletteHeight * 2.0f);
+	if (shouldAdjustContentOffset) {
+		
+		CGFloat delta = (CGFloat)floor (distanceToContentCenter / fullPaletteHeight) * fullPaletteHeight;
+		CGAffineTransform offset = CGAffineTransformMakeTranslation (0, -delta);
+		
+		self.privateScrollView.contentOffset = CGPointApplyAffineTransform (contentOffset, offset);
+	}
+}
+
+/// Updates the two color swatch layer positions abd colors to reflect the current content offset.
+- (void)JB_updateColorSwatchLayers {
+	
+	NSUInteger mostVisibleColorIndex = [self JB_mostVisibleColorIndexAtContentOffset:self.privateScrollView.contentOffset];
+	CGFloat radius = self.privateGeometry.diameter / 2.0f;
+	
+	CGPoint selectedLayerOffset = [self JB_contentOffsetForColorIndex:mostVisibleColorIndex nearest:self.privateScrollView.contentOffset];
+	CGPoint selectedLayerCenter = CGPointApplyAffineTransform (selectedLayerOffset, CGAffineTransformMakeTranslation (radius, radius));
+	UIColor *selectedColor = self.selectableColors[mostVisibleColorIndex];
+	
+	CGFloat secondaryDistance = (selectedLayerCenter.y - self.privateScrollView.contentOffset.y < radius ? self.privateGeometry.distance : -self.privateGeometry.distance);
+	CGPoint secondaryLayerCenter = CGPointApplyAffineTransform (selectedLayerCenter, CGAffineTransformMakeTranslation (0, secondaryDistance));
+	NSUInteger secondaryColorIndex = (mostVisibleColorIndex + (secondaryDistance < 0 ? self.selectableColors.count - 1 : 1)) % self.selectableColors.count;
+	UIColor *secondaryColor = self.selectableColors[secondaryColorIndex];
+	
+	[CATransaction begin];
+	[CATransaction setDisableActions:YES];
+	
+	self.privateSelectedLayer.position = selectedLayerCenter;
+	self.privateSelectedLayer.backgroundColor = selectedColor.CGColor;
+	
+	self.privateSecondaryLayer.position = secondaryLayerCenter;
+	self.privateSecondaryLayer.backgroundColor = secondaryColor.CGColor;
+	
+	[CATransaction commit];
+	
+	// Store the value of the most visible color index so we know the color the privateSelectedLayer represents.
+	[self.privateSelectedLayer setValue:@(mostVisibleColorIndex) forKeyPath:kSelectedColorIndexKeyPath];
+}
+
+/// Convenience method for scrolling to the nearest color given by the index.
+- (void)JB_scrollToColorSwatchLayerAtIndex:(NSUInteger)index animated:(BOOL)animated {
+	CGPoint nearestContentOffset = [self JB_contentOffsetForColorIndex:(index == NSNotFound ? 0 : index) nearest:self.privateScrollView.contentOffset];
+	[self.privateScrollView setContentOffset:nearestContentOffset animated:animated];
+}
+
+/// Returns the color index, corresponding to the swatch layer which is the most visible, at the given offset. That is the swatch covering (or closest to) the visible center.
+- (NSUInteger)JB_mostVisibleColorIndexAtContentOffset:(CGPoint)offset {
+	
+	// Note that color index 0 is placed at CGPointZero.
+	NSUInteger colorSlotNumber = (NSUInteger)((offset.y + self.privateGeometry.distance / 2.0f) / self.privateGeometry.distance);
+	NSUInteger mostVisibleColorIndex = colorSlotNumber % self.selectableColors.count;
+	
+	return mostVisibleColorIndex;
+}
+
+/** Returns the scroll view content offset, nearest the given offset, representing the color at the given index.
+ @note Currently only vertical arrangement is supported.
+ */
+- (CGPoint)JB_contentOffsetForColorIndex:(NSUInteger)colorIndex nearest:(CGPoint)nearestOffset {
+	
+	CGFloat fullPaletteHeight = self.selectableColors.count * self.privateGeometry.distance;
+	NSUInteger fullPaletteCount = (NSUInteger)floor (nearestOffset.y / fullPaletteHeight);
+	
+	CGPoint colorOffset = nearestOffset;
+	colorOffset.y = fullPaletteCount * fullPaletteHeight + colorIndex * self.privateGeometry.distance;
+	
+	// Check to see if we can get closer to the given nearest offset.
+	if (ABS (colorOffset.y - nearestOffset.y) > fullPaletteHeight / 2.0f) {
+		colorOffset.y += (colorOffset.y < nearestOffset.y ? fullPaletteHeight : -fullPaletteHeight);
+	}
+	
+	return colorOffset;
 }
 
 @end
