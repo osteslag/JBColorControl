@@ -7,7 +7,7 @@
 //
 
 #import "JBTestViewController.h"
-#import "JBColorControl.h"
+#import "JBColorControl+Debug.h"
 
 static NSString * const kSelectedColorKeyPath = @"selectedColorIndex";
 
@@ -21,11 +21,23 @@ static NSString * const kSelectedColorKeyPath = @"selectedColorIndex";
 
 @implementation JBTestViewController
 
+- (void)setDebugEnabled:(BOOL)debugEnabled {
+	_debugEnabled = debugEnabled;
+	self.privateColorControl.debugAugmented = self.debugEnabled;
+	[self JB_updateDebugItem];
+}
+
 - (instancetype)init {
 	
 	if ((self = [super init])) {
 		
 		self.title = NSStringFromClass ([JBColorControl class]);
+		
+		UIBarButtonItem *debugItem = [[UIBarButtonItem alloc] initWithImage:nil style:UIBarButtonItemStylePlain target:self action:@selector (JB_toggleDebug:)]; // Image will be set when setting self.debugEnabled
+		self.navigationItem.rightBarButtonItem = debugItem;
+		debugItem.accessibilityLabel = NSLocalizedString (@"Debug", @"Accessibility Label for the Debug button.");
+		
+		self.debugEnabled = NO; // Updates image, TODO: Get from user defaults
 		
 		// Select first color.
 		dispatch_async (dispatch_get_main_queue (), ^{
@@ -159,6 +171,19 @@ static NSString * const kSelectedColorKeyPath = @"selectedColorIndex";
 		
 		centerX += diameter + padding;
 	}
+}
+
+- (void)JB_toggleDebug:(UIBarButtonItem *)debugItem {
+	self.debugEnabled = !self.debugEnabled;
+	debugItem.accessibilityTraits = UIAccessibilityTraitButton | (self.debugEnabled ? UIAccessibilityTraitSelected : UIAccessibilityTraitNone);
+}
+
+- (void)JB_updateDebugItem {
+	
+	NSString *imageName = (self.debugEnabled ? @"Debug Selected" : @"Debug Normal");
+	UIImage *debugImage = [[UIImage imageNamed:imageName] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+	
+	self.navigationItem.rightBarButtonItem.image = debugImage;
 }
 
 - (void)JB_didTapSwatchContainer:(UITapGestureRecognizer *)tapRecognizer {

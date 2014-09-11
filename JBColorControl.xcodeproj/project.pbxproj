@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2935F14519890E2E00D0C7CF /* JBColorControl+Debug.m in Sources */ = {isa = PBXBuildFile; fileRef = 2935F14419890E2E00D0C7CF /* JBColorControl+Debug.m */; };
 		29DB69461988F28A006ABA9E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29DB69451988F28A006ABA9E /* main.m */; };
 		29DB69491988F28A006ABA9E /* JBAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 29DB69481988F28A006ABA9E /* JBAppDelegate.m */; };
 		29DB694C1988F28A006ABA9E /* JBTestViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 29DB694B1988F28A006ABA9E /* JBTestViewController.m */; };
@@ -40,6 +41,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		2935F14319890E2E00D0C7CF /* JBColorControl+Debug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "JBColorControl+Debug.h"; path = "JBColorControl/JBColorControl+Debug.h"; sourceTree = "<group>"; };
+		2935F14419890E2E00D0C7CF /* JBColorControl+Debug.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = "JBColorControl+Debug.m"; path = "JBColorControl/JBColorControl+Debug.m"; sourceTree = "<group>"; };
 		29DB69401988F28A006ABA9E /* JBColorControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JBColorControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		29DB69441988F28A006ABA9E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		29DB69451988F28A006ABA9E /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
@@ -79,6 +82,8 @@
 			children = (
 				29DB69691988F535006ABA9E /* JBColorControl.h */,
 				29DB696A1988F535006ABA9E /* JBColorControl.m */,
+				2935F14319890E2E00D0C7CF /* JBColorControl+Debug.h */,
+				2935F14419890E2E00D0C7CF /* JBColorControl+Debug.m */,
 				29DB69591988F28B006ABA9E /* JBColorControlTests */,
 				29DB69421988F28A006ABA9E /* Test Bench */,
 				29DB69411988F28A006ABA9E /* Products */,
@@ -239,6 +244,7 @@
 			files = (
 				29DB694C1988F28A006ABA9E /* JBTestViewController.m in Sources */,
 				29DB69491988F28A006ABA9E /* JBAppDelegate.m in Sources */,
+				2935F14519890E2E00D0C7CF /* JBColorControl+Debug.m in Sources */,
 				29DB69461988F28A006ABA9E /* main.m in Sources */,
 				29DB696B1988F535006ABA9E /* JBColorControl.m in Sources */,
 			);

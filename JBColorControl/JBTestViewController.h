@@ -7,4 +7,8 @@
 //
 
 @interface JBTestViewController : UIViewController
+
+/// When debug is enabled, the JBColorControl will be augmented in various ways, and various information shown.
+@property (nonatomic, assign, getter=isDebugEnabled) BOOL debugEnabled;
+
 @end
